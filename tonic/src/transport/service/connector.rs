@@ -1,14 +1,16 @@
 use super::super::BoxFuture;
 use super::io::BoxedIo;
-#[cfg(feature = "tls")]
-use super::tls::TlsConnector;
 use http::Uri;
 #[cfg(feature = "tls")]
 use std::fmt;
 use std::task::{Context, Poll};
 use tower::make::MakeConnection;
+#[cfg(feature = "tls")]
+use hyper_util::rt::TokioIo;
 use tower_service::Service;
 
+#[cfg(feature = "tls")]
+use super::tls::TlsConnector;
 pub(crate) struct Connector<C> {
     inner: C,
     #[cfg(feature = "tls")]
@@ -81,12 +83,12 @@ where
             #[cfg(feature = "tls")]
             {
                 if let Some(tls) = tls {
-                    if is_https {
-                        let conn = tls.connect(io).await?;
-                        return Ok(BoxedIo::new(conn));
+                    return if is_https {
+                        let io = tls.connect(TokioIo::new(io)).await?;
+                        Ok(io)
                     } else {
-                        return Ok(BoxedIo::new(io));
-                    }
+                        Ok(BoxedIo::new(io))
+                    };
                 } else if is_https {
                     return Err(HttpsUriWithoutTlsSupport(()).into());
                 }

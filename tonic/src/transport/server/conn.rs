@@ -3,11 +3,12 @@ use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
 #[cfg(feature = "tls")]
-use crate::transport::Certificate;
-#[cfg(feature = "tls")]
 use std::sync::Arc;
 #[cfg(feature = "tls")]
 use tokio_rustls::server::TlsStream;
+
+#[cfg(feature = "tls")]
+use crate::transport::Certificate;
 
 /// Trait that connected IO resources implement and use to produce info about the connection.
 ///
