@@ -1,16 +1,20 @@
-use super::super::BoxFuture;
-use super::io::BoxedIo;
-use http::Uri;
 #[cfg(feature = "tls")]
 use std::fmt;
+
 use std::task::{Context, Poll};
-use tower::make::MakeConnection;
+
+use http::Uri;
+use hyper::rt;
+
 #[cfg(feature = "tls")]
 use hyper_util::rt::TokioIo;
 use tower_service::Service;
 
+use super::super::BoxFuture;
+use super::io::BoxedIo;
 #[cfg(feature = "tls")]
 use super::tls::TlsConnector;
+
 pub(crate) struct Connector<C> {
     inner: C,
     #[cfg(feature = "tls")]
@@ -53,8 +57,8 @@ impl<C> Connector<C> {
 
 impl<C> Service<Uri> for Connector<C>
 where
-    C: MakeConnection<Uri>,
-    C::Connection: Unpin + Send + 'static,
+    C: Service<Uri>,
+    C::Response: rt::Read + rt::Write + Unpin + Send + 'static,
     C::Future: Send + 'static,
     crate::Error: From<C::Error> + Send + 'static,
 {
@@ -63,7 +67,7 @@ where
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        MakeConnection::poll_ready(&mut self.inner, cx).map_err(Into::into)
+        self.inner.poll_ready(cx).map_err(Into::into)
     }
 
     fn call(&mut self, uri: Uri) -> Self::Future {
@@ -75,7 +79,7 @@ where
 
         #[cfg(feature = "tls")]
         let is_https = uri.scheme_str() == Some("https");
-        let connect = self.inner.make_connection(uri);
+        let connect = self.inner.call(uri);
 
         Box::pin(async move {
             let io = connect.await?;

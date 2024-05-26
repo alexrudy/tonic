@@ -333,15 +333,20 @@ impl Endpoint {
 
     /// Create a channel from this config.
     pub async fn connect(&self) -> Result<Channel, Error> {
-        let mut http = hyper::client::connect::HttpConnector::new();
+        let mut http = hyper_util::client::legacy::connect::HttpConnector::new();
         http.enforce_http(false);
         http.set_nodelay(self.tcp_nodelay);
         http.set_keepalive(self.tcp_keepalive);
-        http.set_connect_timeout(self.connect_timeout);
 
         let connector = self.connector(http);
 
-        Channel::connect(connector, self.clone()).await
+        if let Some(connect_timeout) = self.connect_timeout {
+            let mut connector = hyper_timeout::TimeoutConnector::new(connector);
+            connector.set_connect_timeout(Some(connect_timeout));
+            Channel::connect(connector, self.clone()).await
+        } else {
+            Channel::connect(connector, self.clone()).await
+        }
     }
 
     /// Create a channel from this config.
@@ -349,15 +354,20 @@ impl Endpoint {
     /// The channel returned by this method does not attempt to connect to the endpoint until first
     /// use.
     pub fn connect_lazy(&self) -> Channel {
-        let mut http = hyper::client::connect::HttpConnector::new();
+        let mut http = hyper_util::client::legacy::connect::HttpConnector::new();
         http.enforce_http(false);
         http.set_nodelay(self.tcp_nodelay);
         http.set_keepalive(self.tcp_keepalive);
-        http.set_connect_timeout(self.connect_timeout);
 
         let connector = self.connector(http);
 
-        Channel::new(connector, self.clone())
+        if let Some(connect_timeout) = self.connect_timeout {
+            let mut connector = hyper_timeout::TimeoutConnector::new(connector);
+            connector.set_connect_timeout(Some(connect_timeout));
+            Channel::new(connector, self.clone())
+        } else {
+            Channel::new(connector, self.clone())
+        }
     }
 
     /// Connect with a custom connector.
