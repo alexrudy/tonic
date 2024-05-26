@@ -1,9 +1,8 @@
-use hyper::server::conn::AddrStream;
 use std::net::SocketAddr;
-use tokio::net::TcpStream;
-
 #[cfg(feature = "tls")]
 use std::sync::Arc;
+
+use tokio::net::TcpStream;
 #[cfg(feature = "tls")]
 use tokio_rustls::server::TlsStream;
 
@@ -84,17 +83,6 @@ impl TcpConnectInfo {
     /// Return the remote address the IO resource is connected too.
     pub fn remote_addr(&self) -> Option<SocketAddr> {
         self.remote_addr
-    }
-}
-
-impl Connected for AddrStream {
-    type ConnectInfo = TcpConnectInfo;
-
-    fn connect_info(&self) -> Self::ConnectInfo {
-        TcpConnectInfo {
-            local_addr: Some(self.local_addr()),
-            remote_addr: Some(self.remote_addr()),
-        }
     }
 }
 
