@@ -215,7 +215,7 @@ fn set_accepted_socket_options(stream: &TcpStream, nodelay: bool, keepalive: Opt
     }
 
     if let Some(timeout) = keepalive {
-        let sock_ref = socket2::SockRef::from(&stream);
+        let sock_ref = socket2::SockRef::from(stream);
         let sock_keepalive = socket2::TcpKeepalive::new().with_time(timeout);
 
         if let Err(e) = sock_ref.set_tcp_keepalive(&sock_keepalive) {
